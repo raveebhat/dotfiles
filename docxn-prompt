@@ -1,0 +1,18 @@
+if [[ $# -eq 0 ]]; then
+    if [[ -n $DOCXN_SHELL ]]; then
+        echo_yellow "You are already inside Docxn Shell !!"
+    else
+        exec bash --rcfile <(echo 'parse_git_branch() {
+          git branch 2> /dev/null | sed -e "/^[^*]/d" -e "s/* \(.*\)/ (\1)/"
+        }
+        export DOCXN_SHELL=DOCXN_SHELL; 
+        export PS1="\[\033[01;34m\]Docxn Shell \[\e[95m\]\u \[\e[32m\]\w\[\e[91m\]\$(parse_git_branch)\[\e[00m\] \$ ";
+        tput reset;
+        source $HOME/docxn/latest/setup/generatealias.sh
+        source $HOME/tracxn_dev.env;
+        source $HOME/tracxn_dev.alias;
+        printf "\033[8;30;100t";
+        trap "unset DOCXN_SHELL" EXIT HUP;
+        cat $HOME/docxn/latest/_includes/dev/files/shell_message.txt | lolcat')
+    fi
+else

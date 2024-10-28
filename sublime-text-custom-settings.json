@@ -1,0 +1,9 @@
+{
+	"font_face": "IBM Plex Mono",
+	"font_size": 14,
+	"theme": "ayu-mirage.sublime-theme",
+	"color_scheme": "Packages/ayu/ayu-mirage.sublime-color-scheme",
+	"ui_native_titlebar": true,
+	"ui_separator": true,
+	"ui_wide_scrollbars": true, 
+}

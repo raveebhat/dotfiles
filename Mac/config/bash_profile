@@ -44,3 +44,6 @@ export TERM="xterm-256color"
 if [ -f "$HOME/.orbstack/shell/init.bash" ]; then
     source "$HOME/.orbstack/shell/init.bash" 2>/dev/null || :
 fi
+
+# Load interactive bash configuration
+[[ -f ~/.bashrc ]] && source ~/.bashrc

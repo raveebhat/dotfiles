@@ -1,0 +1,28 @@
+# font-family = "CaskaydiaMono Nerd Font"
+font-family = "JetBrainsMono Nerd Font"
+font-size = 13
+window-inherit-font-size = false
+
+theme = "Abernathy"
+
+# Comfortable vertical spacing
+adjust-cell-height = 10%
+
+clipboard-paste-protection = false
+term = "xterm-256color"
+clipboard-read = allow
+clipboard-write = allow
+copy-on-select = true
+
+# Soft selection
+# selection-background = #5c6c80
+# selection-foreground = #ffffff
+
+selection-background = #465363
+selection-foreground = #E8EDF2
+
+# Local session
+background = #111318
+
+# Ghostty SSH integration
+shell-integration-features = title,ssh-env,ssh-terminfo

@@ -1,0 +1,401 @@
+# ============================================================
+# Personal shell tools
+#
+# Node:
+#   get_node_version
+#   get_nvm_version
+#   use_node 22
+#
+# Java:
+#   get_java_version
+#   use_java 17
+#
+# Python 3:
+#   get_python3_version
+#   use_python3 3.9
+#
+# Current version is shown in green.
+# Other installed versions are shown normally.
+# ============================================================
+
+
+# ============================================================
+# Colours
+# ============================================================
+
+_SHELL_TOOLS_GREEN=$'\033[32m'
+_SHELL_TOOLS_RESET=$'\033[0m'
+
+
+# ============================================================
+# NVM / Node
+# ============================================================
+
+_shell_tools_load_nvm() {
+    if type nvm >/dev/null 2>&1; then
+        return 0
+    fi
+
+    export NVM_DIR="$HOME/.nvm"
+
+    if [ -s "$NVM_DIR/nvm.sh" ]; then
+        . "$NVM_DIR/nvm.sh"
+        return 0
+    fi
+
+    echo "NVM: not installed"
+    return 1
+}
+
+
+get_nvm_version() {
+    _shell_tools_load_nvm || return 1
+
+    printf 'NVM: %s\n' "$(nvm --version)"
+}
+
+
+get_node_version() {
+    _shell_tools_load_nvm || return 1
+
+    local current
+    local node_root
+    local version_dir
+    local version
+
+    current="$(node --version 2>/dev/null)"
+
+    if [ -z "$current" ]; then
+        echo "Node: not available"
+        return 1
+    fi
+
+    printf 'Node: %s\n' "$current"
+    printf 'NVM:  %s\n' "$(nvm --version)"
+
+    node_root="$NVM_DIR/versions/node"
+
+    if [ ! -d "$node_root" ]; then
+        return 0
+    fi
+
+    echo
+    echo "Installed Node versions:"
+
+    for version_dir in "$node_root"/v*; do
+        [ -d "$version_dir" ] || continue
+
+        version="${version_dir##*/}"
+
+        if [ "$version" = "$current" ]; then
+            printf '%s● %s%s\n' \
+                "$_SHELL_TOOLS_GREEN" \
+                "$version" \
+                "$_SHELL_TOOLS_RESET"
+        else
+            printf '  %s\n' "$version"
+        fi
+    done
+}
+
+
+use_node() {
+    _shell_tools_load_nvm || return 1
+
+    if [ -z "$1" ]; then
+        echo "Usage: use_node <version>"
+        echo "Example: use_node 22"
+        return 1
+    fi
+
+    nvm use "$1"
+}
+
+
+# ============================================================
+# Java
+# ============================================================
+
+_shell_tools_java_home() {
+    /usr/libexec/java_home -v "$1" 2>/dev/null
+}
+
+
+get_java_version() {
+    if ! command -v java >/dev/null 2>&1; then
+        echo "Java: not available"
+        return 1
+    fi
+
+    local current_home
+    local current_version
+    local jdk_dir
+    local jdk_home
+    local version
+    local first_line
+
+    # If JAVA_HOME exists, use it.
+    # Otherwise determine the JDK currently selected by macOS.
+    if [ -n "$JAVA_HOME" ] && [ -d "$JAVA_HOME" ]; then
+        current_home="$JAVA_HOME"
+    else
+        current_home="$(/usr/libexec/java_home 2>/dev/null)"
+    fi
+
+    current_version="$(java -version 2>&1 | head -n 1)"
+
+    printf 'Java: %s\n' "$current_version"
+    printf 'JAVA_HOME: %s\n' "${current_home:-not set}"
+
+    echo
+    echo "Installed Java versions:"
+
+    for jdk_dir in /Library/Java/JavaVirtualMachines/*.jdk; do
+        [ -d "$jdk_dir" ] || continue
+
+        jdk_home="$jdk_dir/Contents/Home"
+
+        [ -x "$jdk_home/bin/java" ] || continue
+
+        first_line="$("$jdk_home/bin/java" -version 2>&1 | head -n 1)"
+
+        version="$(printf '%s\n' "$first_line" | sed -E 's/.*version "([^"]+)".*/\1/')"
+
+        if [ "$jdk_home" = "$current_home" ]; then
+            printf '%s● %s%s\n' \
+                "$_SHELL_TOOLS_GREEN" \
+                "$version" \
+                "$_SHELL_TOOLS_RESET"
+        else
+            printf '  %s\n' "$version"
+        fi
+    done
+}
+
+
+use_java() {
+    if [ -z "$1" ]; then
+        echo "Usage: use_java <version>"
+        echo "Example: use_java 17"
+        return 1
+    fi
+
+    local java_home
+
+    java_home="$(_shell_tools_java_home "$1")"
+
+    if [ -z "$java_home" ]; then
+        echo "Java $1 is not installed."
+        echo
+        echo "Installed Java versions:"
+        /usr/libexec/java_home -V 2>&1
+        return 1
+    fi
+
+    export JAVA_HOME="$java_home"
+
+    # Remove existing JDK bin entries from PATH.
+    local cleaned_path=""
+    local path_entry
+
+    OLD_IFS="$IFS"
+    IFS=":"
+
+    for path_entry in $PATH; do
+        case "$path_entry" in
+            */JavaVirtualMachines/*.jdk/Contents/Home/bin)
+                ;;
+            *)
+                if [ -z "$cleaned_path" ]; then
+                    cleaned_path="$path_entry"
+                else
+                    cleaned_path="$cleaned_path:$path_entry"
+                fi
+                ;;
+        esac
+    done
+
+    IFS="$OLD_IFS"
+
+    export PATH="$JAVA_HOME/bin:$cleaned_path"
+
+    printf 'Using Java %s\n' "$1"
+    printf 'JAVA_HOME: %s\n' "$JAVA_HOME"
+}
+
+
+# ============================================================
+# Python 3
+# ============================================================
+
+get_python3_version() {
+    local current
+    local pyenv_version
+
+    if ! command -v python3 >/dev/null 2>&1; then
+        echo "Python 3: not available"
+        return 1
+    fi
+
+    current="$(python3 --version 2>&1)"
+
+    printf 'Python: %s\n' "$current"
+    printf 'Path:   %s\n' "$(command -v python3)"
+
+    # If pyenv exists, show its installed versions.
+    # Otherwise there is only the system/Homebrew Python
+    # available to this shell.
+    if command -v pyenv >/dev/null 2>&1; then
+        pyenv_version="$(pyenv --version 2>/dev/null | awk '{print $2}')"
+
+        printf 'pyenv:  %s\n' "$pyenv_version"
+
+        echo
+        echo "Installed Python versions:"
+
+        pyenv versions --bare 2>/dev/null |
+        while IFS= read -r version; do
+            [ -n "$version" ] || continue
+
+            if python3 --version 2>/dev/null | grep -F "$version" >/dev/null 2>&1; then
+                printf '%s● %s%s\n' \
+                    "$_SHELL_TOOLS_GREEN" \
+                    "$version" \
+                    "$_SHELL_TOOLS_RESET"
+            else
+                printf '  %s\n' "$version"
+            fi
+        done
+    fi
+}
+
+
+use_python3() {
+    if [ -z "$1" ]; then
+        echo "Usage: use_python3 <version>"
+        echo "Example: use_python3 3.9"
+        return 1
+    fi
+
+    # If pyenv is available, use it.
+    if command -v pyenv >/dev/null 2>&1; then
+        if ! pyenv versions --bare 2>/dev/null | grep -Fx "$1" >/dev/null 2>&1; then
+            echo "Python $1 is not installed through pyenv."
+            echo
+            echo "Available versions:"
+            pyenv versions --bare
+            return 1
+        fi
+
+        pyenv shell "$1"
+
+        printf 'Using Python %s\n' "$1"
+        printf 'Python: %s\n' "$(python3 --version)"
+        printf 'Path:   %s\n' "$(command -v python3)"
+
+        return 0
+    fi
+
+    # No pyenv. Check the Python already provided by the system.
+    local current_version
+    current_version="$(python3 --version 2>&1 | awk '{print $2}')"
+
+    if [[ "$current_version" == "$1"* ]]; then
+        printf 'Python %s is already active.\n' "$current_version"
+        printf 'Path: %s\n' "$(command -v python3)"
+        return 0
+    fi
+
+    echo "Python $1 is not available."
+    echo
+    echo "Current Python: $current_version"
+    echo "Path: $(command -v python3)"
+    echo
+    echo "A Python version manager such as pyenv is required"
+    echo "to install and switch between multiple Python versions."
+
+    return 1
+}
+
+# ============================================================
+# Ghostty session appearance
+# ============================================================
+
+_ghostty_set_title() {
+    printf '\033]0;%s\007' "$1"
+}
+
+_ghostty_set_background() {
+    printf '\033]11;%s\007' "$1"
+}
+
+_ghostty_reset_background() {
+    printf '\033]111\007'
+}
+
+_ghostty_local() {
+    _ghostty_set_title "Local"
+    _ghostty_reset_background
+}
+
+_ghostty_n4010() {
+    _ghostty_set_title "N4010"
+    _ghostty_set_background "#111923"
+}
+
+_ghostty_rpi02w() {
+    _ghostty_set_title "rpi02w"
+    _ghostty_set_background "#111A16"
+}
+
+_ghostty_other_ssh() {
+    _ghostty_set_title "SSH"
+    _ghostty_set_background "#18151D"
+}
+
+
+ssh() {
+    local target
+    local host
+    local appearance="other"
+
+    # Ask OpenSSH to resolve the effective configuration.
+    # This only runs when ssh is actually invoked.
+    target="$(/usr/bin/ssh -G "$@" 2>/dev/null |
+        awk '$1 == "hostname" { print $2; exit }')"
+
+    host="$(printf '%s' "$target" | tr '[:upper:]' '[:lower:]')"
+
+    case "$host" in
+        n4010|n4010.local|192.168.0.103)
+            appearance="n4010"
+            ;;
+        rpi02w|rpi02w.local|192.168.0.100)
+            appearance="rpi02w"
+            ;;
+        *)
+            appearance="other"
+            ;;
+    esac
+
+    case "$appearance" in
+        n4010)
+            _ghostty_n4010
+            ;;
+        rpi02w)
+            _ghostty_rpi02w
+            ;;
+        other)
+            _ghostty_other_ssh
+            ;;
+    esac
+
+    # Run the real SSH client.
+    /usr/bin/ssh "$@"
+    local ssh_status=$?
+
+    # Restore the Mac/local appearance after SSH exits.
+    _ghostty_local
+
+    return $ssh_status
+}

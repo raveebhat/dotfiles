@@ -1,0 +1,7 @@
+add_newline = true
+command_timeout = 200
+format = "[$directory$git_branch$git_status]($style)$character"
+
+[character]
+error_symbol = "[✗](bold red)"
+success_symbol = "[➜](bold yellow)"
